@@ -22,6 +22,15 @@ import argparse
 # do startoje sherbimet e monitorimit dhe rezultatet do i postoje ne nje API
 
 
+def check_if_root():
+	if not os.geteuid() == 0:
+		#sys.exit('Script must be run as root')
+		sys.exit('Y U NO ROOT ??')
+	else:
+		print "Root check OK"
+
+check_if_root()
+
 # Remove this line to make all functions public, or selectively add needed functions to make them public.
 #__all__ = ["create_packet", "echo", "recursive"]
 
@@ -193,9 +202,9 @@ class node:
         self.node_type = str(node_type)
         self.node_status = "1"
         self.node_host = node_host
-        self.node_timeout = node_timeout
-        self.node_interval = node_interval
-        self.node_url = ""
+        self.node_timeout = int(node_timeout)
+        self.node_interval = int(node_interval)
+        self.node_url = "-1"
 
 	def getID(self):
 		return self.node_id
@@ -273,42 +282,71 @@ class node:
 		print "Node \nID: " + str(self.node_id)
 		print "Type: " + self.node_type
 		print "Host " + self.node_host
+		print "Timeout " + self.node_timeout
+		print "interval " + self.node_interval
 		if self.node_url:
 			print "Url: " + str(self.node_url)
 
 def get_file():
 	print "Get file procedure"
 
+def post_data():
+	print "Update API/server procedure"
+
 def parse_file():
 	#print "Parse file procedure"
-	node_config_file = open("foo.txt", "r")
+	try:
+		node_config_file = open("node_config_file", "r")
+	except:
+		sys.exit("Unable to find config file!")
 	#print "Name of the file: ", node_config_file.name
 	config_lines = node_config_file.readlines()
 	#print config_lines
 	node_config_file.close()
+
 	return config_lines
 
-def post_data():
-	print "Update API/server procedure"
+def parse_config(cfg_param):
+	nodeList = []
+
+	for cfg_line in cfg_param:
+		parse1 = cfg_line.split(";")
+
+		for line in parse1:
+			parse2 = line.split(":")
+			#print parse2[0]
+			if(parse2[0] == "id"):
+				conf_id = parse2[1]
+				#print "Setting ID"
+			elif(parse2[0] == "type"):
+				conf_type = parse2[1]
+				#print "Setting type"
+			elif(parse2[0] == "host"):
+				conf_host = parse2[1]
+				#print "Setting host"
+			elif(parse2[0] == "timeout"):
+				conf_timeout = parse2[1]
+				#print "Setting timeout"
+			elif(parse2[0] == "interval"):
+				conf_interval = parse2[1]
+				#print "Setting interval"
+			elif(parse2[0] == "url"):
+				conf_url = parse2[1]
+		nodeList.append(node(conf_id,conf_type,conf_host,conf_timeout,conf_interval))
+		#if conf_url:
+		#	nodeList[conf_id].setUrl(conf_url)
+	return nodeList
 
 
-#while(True):
-a = parse_file()
-for rr in a:
-	print rr
-	#config_parts = re.match( r"(id:*);(type:*);(host:*);(timeout:*);(interval:*)\n", rr)
-	gzim = re.match( r"(\w+);(\w+)", rr)
-	if gzim:
-		print gzim.group(0)#, config_parts.group(2),# config_parts.group(3),config_parts.group(4),config_parts.group(5)
-	else:
-		print "no match?? "
-	print re.DEBUG
-sys.exit()
 
-# my poor attempt to threads
-test1 = node(1,"ping","8.8.8.8",2,1)
-test2 = node(2,"http_status","pbx.webservice01.com",2,7)
-test2.setUrl("http://pbx.webservice01.com:8081/zabbix/dashboard.php")
+node_list = parse_config(parse_file())
+
+#node_list[0].printConfig()
+#node_list[1].printConfig()
+
+
+# kujdes! URL na vjen ne base64---> 
+# test2.setUrl("http://pbx.webservice01.com:8081/zabbix/dashboard.php")
 
 parser = argparse.ArgumentParser(description=''' node id ''')
 parser.add_argument("-n", metavar="node_id", help='node_id')
@@ -318,7 +356,7 @@ args = parser.parse_args()
 if (args.n == None):
 	parser.print_help()
 
-if(int(args.n) == 1):
-	test1.serviceCheck()
-if(int(args.n) == 2):
-	test2.serviceCheck()
+if(args.n):
+	if(int(args.n) > len(node_list)-1 ): # since the numbering starts from 0
+		sys.exit("Specified node id is outside range")
+	node_list[int(args.n)].serviceCheck()
