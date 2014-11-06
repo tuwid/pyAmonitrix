@@ -1,0 +1,2 @@
+id:0;type:ping;host:8.8.8.8;timeout:2;interval:5
+id:1;type:ping;host:8.8.4.4;timeout:2;interval:5
