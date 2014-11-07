@@ -10,6 +10,7 @@ from sys import version_info as py_version
 import os
 import re
 import sys
+import base64
 import httplib
 import syslog
 import datetime
@@ -20,6 +21,9 @@ import argparse
 # do marri nji file config nga diku ( aktualisht thjesht do lexoje nje file )
 # do parsoje sherbimet qe do monitoroje nga ai file
 # do startoje sherbimet e monitorimit dhe rezultatet do i postoje ne nje API
+
+# special thnx to WILLIAM T CHRISTENSEN for helping me out with python while writing this 
+# 
 
 
 def check_if_root():
@@ -213,7 +217,8 @@ class node:
     def setStatus(self,new_status):
     	self.node_status = new_status
     def setUrl(self,node_url):
-    	self.node_url = node_url
+    	# the url comes in a base64 format 
+    	self.node_url = base64.b64decode(str(node_url))
 
     def serviceCheck(self):
 
@@ -311,7 +316,7 @@ def parse_config(cfg_param):
 
 	for cfg_line in cfg_param:
 		parse1 = cfg_line.split(";")
-
+		conf_id,conf_type,conf_host,conf_timeout,conf_timeout,conf_interval,conf_url = (True,)*7
 		for line in parse1:
 			parse2 = line.split(":")
 			#print parse2[0]
@@ -333,8 +338,8 @@ def parse_config(cfg_param):
 			elif(parse2[0] == "url"):
 				conf_url = parse2[1]
 		nodeList.append(node(conf_id,conf_type,conf_host,conf_timeout,conf_interval))
-		#if conf_url:
-		#	nodeList[conf_id].setUrl(conf_url)
+		if conf_url:
+			nodeList[-1].setUrl(conf_url)
 	return nodeList
 
 

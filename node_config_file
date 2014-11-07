@@ -1,2 +1,3 @@
 id:0;type:ping;host:8.8.8.8;timeout:2;interval:5
 id:1;type:ping;host:8.8.4.4;timeout:2;interval:5
+id:2;type:http_status;host:pbx.webservice01.com;timeout:2;interval:10;url:aHR0cDovL3BieC53ZWJzZXJ2aWNlMDEuY29tOjgwODEvemFiYml4L2Rhc2hib2FyZC5waHAK
