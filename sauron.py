@@ -380,6 +380,7 @@ class node:
 			#print("{} / {} / {}	(min/avg/max in ms)".format(round(min(log)*1000, 3), round(sum([x*1000 for x in log if x is not None])/len(log), 3), round(max(log)*1000, 3)))
 
 		if self.node_type == "http_content":
+			print ""
 		if self.node_type == "dns_check":
 			print "dns check and stuff"
 		if self.node_type == "smtp_check":
