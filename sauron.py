@@ -6,12 +6,16 @@ from random import random  # Possibly switch to os.urandom()
 from select import select
 from time import time, sleep
 from sys import version_info as py_version
+from pyvirtualdisplay import Display
+from selenium import webdriver
+
 
 import os
 import re
 import sys
 import base64
 import httplib
+import requests
 import syslog
 import datetime
 import threading
@@ -199,36 +203,85 @@ def verbose(dest_addr, count=8, timeout=1, floodlock=1, infinite=False):
 
 
 class node:
-    """the node thing""" 
-
-    def __init__(self,node_id,node_type,node_host,node_timeout,node_interval):
-        self.node_id = int(node_id)
-        self.node_type = str(node_type)
-        self.node_status = "1"
-        self.node_host = node_host
-        self.node_timeout = int(node_timeout)
-        self.node_interval = int(node_interval)
-        self.node_url = "-1"
+	#"""the node thing""" 
+	def __init__(self,node_id,node_type,node_host,node_timeout,node_interval):
+		self.node_id = int(node_id)
+		self.node_type = str(node_type)
+		self.node_status = "1"
+		self.node_host = node_host
+		self.node_timeout = int(node_timeout)
+		self.node_interval = int(node_interval)
+		self.node_url = "-1"
 
 	def getID(self):
 		return self.node_id
 	def getStatus(self):
 		return self.node_status
-    def setStatus(self,new_status):
-    	self.node_status = new_status
-    def setUrl(self,node_url):
-    	# the url comes in a base64 format 
-    	self.node_url = base64.b64decode(str(node_url))
+	def setStatus(self,new_status):
+		self.node_status = new_status
+	def setUrl(self,node_url):
+		# the url comes in a base64 format 
+		try:
+			self.node_url = base64.b64decode(str(node_url))
+		except:
+			write_log("invalid url")
+			sys.exit("invalid url")
+	def serviceCheck(self):
 
-    def serviceCheck(self):
+		if self.node_type == "http_load":
+			display = Display(visible=0, size=(800, 600))
+			display.start()
+			while (int(self.node_status) == 1):
+				browser = webdriver.Firefox()
+				browser.get(self.node_url)
+				#print browser.title
+				navigationStart = browser.execute_script("return window.performance.timing.navigationStart")
+				responseStart = browser.execute_script("return window.performance.timing.responseStart")
+				domComplete = browser.execute_script("return window.performance.timing.domComplete")
 
-    	if self.node_type == "http_status":
-    		#if str(self.node_url).startswith("http"):
-    		#	print ""
+				backendPerformance = responseStart - navigationStart
+				frontendPerformance = domComplete - responseStart
+				
+				print ("Node " + str(self.node_id) + " Back End: %s" % backendPerformance + "ms" +  " Front End: %s" % frontendPerformance + "ms " + " Total: " + str(backendPerformance + frontendPerformance) + "ms ")
+				write_log("Node " + str(self.node_id) + "Back End: %s" % backendPerformance + "ms" +  " Front End: %s" % frontendPerformance + "ms " + " Total: " + str(backendPerformance + frontendPerformance) + "ms ")
+				browser.quit()
+
+				sleep(self.node_interval)
+			display.stop()
+
+		if self.node_type == "http_title":
+			while (int(self.node_status) == 1):
+
+				try:
+					r = requests.get(self.node_url)
+				except:
+					sys.exit("not hmm")
+				print r.status_code
+				#print r.headers
+				#print r.content
+				source = r.content
+				pattern = re.compile(r'<title[^>]*>([^<]+)</title>', flags=re.DOTALL)
+				results = pattern.findall(source)
+				print results
+				#title = re.match("<title(?:\s.+?)?>", source )
+				#if title:
+				#	print title.group(1)
+				#else:
+				#	print "no match"
+				write_log("Node "+ str(self.node_id) + " " + str(results))
+				#print source
+				sleep(self.node_interval)
+
+		if self.node_type == "http_status":
+			#if str(self.node_url).startswith("http"):
+			#	print ""
     		#else:
 			#	self.node_url = "http://"+ str(self.node_url)
 			#
+			print self.printConfig()
+
 			while (int(self.node_status) == 1):
+				web_error = ""
 				full_url = self.node_url.split("/")
 				base_url = full_url[2]
 				if ":" in base_url:
@@ -248,48 +301,72 @@ class node:
 						part_url += "/" + piece 
 						#print part_url
 				r = httplib.HTTPConnection(base_url, service_port, timeout=self.node_timeout)
+					#r = requests.get(self.node_url)
+				#print "Object created"
+				#r.putheader('User-Agent', ua) 
 				#print base_url + " port " + service_port + " me path " + part_url
-				r.request("GET",part_url)
-				response = r.getresponse()
-				print response.status, response.reason
-				write_log("Node "+ str(self.node_id) + " " + str(response.status) + " " +  response.reason)
+				try:
+					r.request("GET",part_url)
+				except:
+					e = sys.exc_info()[0]
+					#print e
+					web_error = "Error Unable to connect to " + str(e)
+					#sys.exit('problem pra')
+					print web_error
+					write_log("Node "+ str(self.node_id) + " " + str(web_error))
+				if not web_error:
+					response = r.getresponse()
+					print response.status, response.reason
+					write_log("Node "+ str(self.node_id) + " " + str(response.status) + " " +  response.reason)
 				sleep(self.node_interval)
 
-    	if self.node_type == "ping":
-    		#print "doing ping stuff"
+		if self.node_type == "ping":
+			print self.printConfig()
+			ping_error = ""
+			#print "doing ping stuff"
 			#verbose(self.node_host,4,2)
 			#verbose("lulz.eua",4,2)
-			host = gethostbyname(self.node_host)
-			count = 10
-			floodlock = 1
-			timeout = self.node_timeout
-			log = []
-			fail = 0
-			interval = self.node_interval
 			while (int(self.node_status) == 1):
-				for seqn in xrange(count):
-					log.append(echo(self.node_host, timeout))
-					if log[-1] is None:
-						print("echo timeout... ")
-						fail += 1
-						write_log("Node "+ str(self.node_id) + " " + "request timeout")
-					else:
-						write_log("Node "+ str(self.node_id) + " " + str(round(log[-1]*1000, 3)))
-						print("echo from {}:  delay={} ms").format(host, round(log[-1]*1000, 3))
-					sleep(floodlock)
-				sleep(interval)
+				interval = self.node_interval
+				try:
+					host = gethostbyname(self.node_host)
+				except:
+					ping_error = "Unable to resolve host " + str(self.node_host) + " " + str(sys.exc_info()[0])
+					write_log("Node "+ str(self.node_id) + " " + str(ping_error))
+					print ping_error
+					#sys.exit("")
+				if ping_error == "":	
+					count = 10
+					floodlock = 1
+					timeout = self.node_timeout
+					log = []
+					fail = 0
+					for seqn in xrange(count):
+						log.append(echo(self.node_host, timeout))
+						if log[-1] is None:
+						 	print("echo timeout... ")
+							fail += 1
+							write_log("Node "+ str(self.node_id) + " " + "request timeout")
+						else:
+							write_log("Node "+ str(self.node_id) + " " + str(round(log[-1]*1000, 3)))
+							print("echo from {}:  delay={} ms").format(host, round(log[-1]*1000, 3))
+						sleep(floodlock)
+				sleep(self.node_interval)
 			#print("sent={} received={} ratio={}%".format(count, count-fail, (float(count-fail) * 100)/count))
 			#print("{} / {} / {}    (min/avg/max in ms)".format(round(min(log)*1000, 3), round(sum([x*1000 for x in log if x is not None])/len(log), 3), round(max(log)*1000, 3)))
+
+		if self.node_type == "dns_check":
+			print "dns check and stuff"
 		#if self.node_type == "smtp_check":
 		#if self.node_type == "pop_check":
 
-    def printConfig(self):
+	def printConfig(self):
 		print "Node \nID: " + str(self.node_id)
-		print "Type: " + self.node_type
-		print "Host " + self.node_host
-		print "Timeout " + self.node_timeout
-		print "interval " + self.node_interval
-		if self.node_url:
+		print "Type: " + str(self.node_type)
+		print "Host " + str(self.node_host)
+		print "Timeout " + str(self.node_timeout)
+		print "interval " + str(self.node_interval)
+		if self.node_url != "-1":
 			print "Url: " + str(self.node_url)
 
 def get_file():
@@ -339,7 +416,7 @@ def parse_config(cfg_param):
 				conf_url = parse2[1]
 		nodeList.append(node(conf_id,conf_type,conf_host,conf_timeout,conf_interval))
 		if conf_url:
-			nodeList[-1].setUrl(conf_url)
+			nodeList[-1].setUrl(str(conf_url))
 	return nodeList
 
 
