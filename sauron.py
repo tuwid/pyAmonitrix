@@ -35,7 +35,8 @@ def check_if_root():
 		#sys.exit('Script must be run as root')
 		sys.exit('Y U NO ROOT ??')
 	else:
-		print "Root check OK"
+		print ""
+		#print "Root check OK"
 
 check_if_root()
 
@@ -278,7 +279,7 @@ class node:
     		#else:
 			#	self.node_url = "http://"+ str(self.node_url)
 			#
-			print self.printConfig()
+			#print self.printConfig()
 
 			while (int(self.node_status) == 1):
 				web_error = ""
