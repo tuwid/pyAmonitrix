@@ -3,19 +3,19 @@
 
 Ammonitrix is a monitoring system we're building in python to monitor services remotely ( its agentless) <br>
 At the moment we have the following sensons <br>
-	icmp check <br>
-	http load time (frontend + backend) <br>
-	http status <br>
-	http title <br>
+    -icmp check <br>
+    -http load time (frontend + backend) <br>
+    -http status <br>
+    -http title <br>
 The project is not finished yet as we're currently working on it. <br>
 
 At the moment we're working on: <br>
-	adding new sensors <br>
-	implement a realtime frontend <br>
-	setting up the server <br>
-	mail support <br>
-	sms support <br>
-	raporting <br>
+    -adding new sensors <br>
+    -implement a realtime frontend <br>
+    -setting up the server <br>
+    -mail support <br>
+    -sms support <br>
+    -raporting <br>
 
 At the moment the results are transmited via syslog (for diagnostics) <br>
 
