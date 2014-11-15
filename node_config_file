@@ -2,4 +2,5 @@ id:0;type:ping;host:8.8.8.8;timeout:2;interval:5
 id:1;type:ping;host:8.8.4.4;timeout:2;interval:5
 id:2;type:http_status;host:pbx.webservice01.com;timeout:2;interval:10;url:aHR0cDovL3BieC53ZWJzZXJ2aWNlMDEuY29tOjgwODEvemFiYml4L2Rhc2hib2FyZC5waHAK
 id:3;type:http_load;host:pbx.webservice01.com;timeout:2;interval:10;url:aHR0cDovL3BieC53ZWJzZXJ2aWNlMDEuY29tOjgwODEvemFiYml4L2Rhc2hib2FyZC5waHAK
-id:4;type:http_title;host:www.facebook.com;timeout:2;interval:10;url:aHR0cDovL3d3dy5mYWNlYm9vay5jb20v
+id:4;type:http_content;host:pbx.webservice01.com;timeout:2;interval:10;url:aHR0cDovL3BieC53ZWJzZXJ2aWNlMDEuY29tLw==;match:VGUgZGhlbmEgbWJpIHNpdHVhdGVuIGUgYmxhY2tsaXN0aW5n
+id:5;type:http_title;host:www.facebook.com;timeout:2;interval:10;url:aHR0cDovL3d3dy5mYWNlYm9vay5jb20v

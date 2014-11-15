@@ -236,6 +236,7 @@ class node:
 		self.node_timeout = int(node_timeout)
 		self.node_interval = int(node_interval)
 		self.node_url = "-1"
+		self.node_text_match = "-1"
 
 	def getID(self):
 		return self.node_id
@@ -243,6 +244,12 @@ class node:
 		return self.node_status
 	def setStatus(self,new_status):
 		self.node_status = new_status
+	def setTextmatch(self,text_match):
+		try:
+			self.node_text_match = base64.b64decode(str(text_match))
+		except:
+			write_log("invalid text_match")
+			sys.exit("invalid text_match")
 	def setUrl(self,node_url):
 		# the url comes in a base64 format 
 		try:
@@ -318,24 +325,17 @@ class node:
 				part_url = ""
 				#print "Splitting Url "
 				for piece in full_url:
-					#print piece
 					part_nr+=1
-					#print part_nr
 					if(part_nr > 3):
 						part_url += "/" + piece 
 						#print part_url
 				r = httplib.HTTPConnection(base_url, service_port, timeout=self.node_timeout)
-					#r = requests.get(self.node_url)
-				#print "Object created"
-				#r.putheader('User-Agent', ua) 
-				#print base_url + " port " + service_port + " me path " + part_url
 				try:
 					r.request("GET",part_url)
 				except:
 					e = sys.exc_info()[0]
 					#print e
 					web_error = "Error Unable to connect to " + str(e)
-					#sys.exit('problem pra')
 					print web_error
 					write_log("Node "+ str(self.node_id) + " " + str(web_error))
 				if not web_error:
@@ -380,12 +380,43 @@ class node:
 			#print("{} / {} / {}	(min/avg/max in ms)".format(round(min(log)*1000, 3), round(sum([x*1000 for x in log if x is not None])/len(log), 3), round(max(log)*1000, 3)))
 
 		if self.node_type == "http_content":
-			print ""
+			while (int(self.node_status) == 1):
+				web_error = ""
+				full_url = self.node_url.split("/")
+				base_url = full_url[2]
+				if ":" in base_url:
+					service_port = base_url.split(":")[1] 
+					base_url = base_url.split(":")[0]
+				else:
+					service_port = 80
+
+				part_nr = 0
+				part_url = ""
+				#print "Splitting Url "
+				for piece in full_url:
+					part_nr+=1
+					if(part_nr > 3):
+						part_url += "/" + piece 
+				try:
+					r = requests.get(self.node_url)
+				except:
+					e = sys.exc_info()[0]
+					#print e
+					web_error = "Error Unable to connect to " + str(e)
+					#sys.exit('problem pra')
+					print web_error
+					write_log("Node "+ str(self.node_id) + " " + str(web_error))
+				if not web_error:
+					pattern = re.compile(self.node_text_match, flags=re.DOTALL)
+					results = pattern.findall(str(r.content))
+					print results
+				sleep(self.node_interval)
 		if self.node_type == "dns_check":
 			print "dns check and stuff"
 		if self.node_type == "smtp_check":
 			print "smtp banner check"
 		if self.node_type == "pop_check":
+			print "pop check"
 
 	def printConfig(self):
 		print "Node \nID: " + str(self.node_id)
@@ -420,7 +451,7 @@ def parse_config(cfg_param):
 
 	for cfg_line in cfg_param:
 		parse1 = cfg_line.split(";")
-		conf_id,conf_type,conf_host,conf_timeout,conf_timeout,conf_interval,conf_url = (True,)*7
+		conf_id,conf_type,conf_host,conf_timeout,conf_timeout,conf_interval,conf_url,conf_match = (True,)*8
 		for line in parse1:
 			parse2 = line.split(":")
 			#print parse2[0]
@@ -441,12 +472,15 @@ def parse_config(cfg_param):
 				#print "Setting interval"
 			elif(parse2[0] == "url"):
 				conf_url = parse2[1]
+			elif(parse2[0] == "match"):
+				conf_match = parse2[1]
 		nodeList.append(node(conf_id,conf_type,conf_host,conf_timeout,conf_interval))
 		if conf_url:
 			nodeList[-1].setUrl(str(conf_url))
+		if conf_match:
+			nodeList[-1].setTextmatch(str(conf_match))
+
 	return nodeList
-
-
 
 node_list = parse_config(parse_file())
 
