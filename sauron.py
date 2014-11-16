@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from socket import socket, htons, AF_INET, SOCK_DGRAM, SOCK_RAW, getprotobyname, gethostbyname, error, gaierror
+from socket import socket, htons, AF_INET, SOCK_STREAM, SOCK_DGRAM, SOCK_RAW, getprotobyname, gethostbyname, error, gaierror
 from struct import pack, unpack
 from random import random  # Possibly switch to os.urandom()
 from select import select
@@ -60,6 +60,8 @@ ERROR_DESCR = {1: "ICMP messages can only be sent from processes running as root
 
 
 def write_log(node_event):
+	node_event = node_event.replace("\n"," ")
+	node_event = node_event.replace("\r"," ")
 	node_event += " " +str(datetime.datetime.now().time())
 	syslog.syslog(syslog.LOG_ERR, node_event)
 
@@ -409,14 +411,61 @@ class node:
 				if not web_error:
 					pattern = re.compile(self.node_text_match, flags=re.DOTALL)
 					results = pattern.findall(str(r.content))
-					print results
+					#print results
+					if(results):
+						write_log("Node "+ str(self.node_id) + " matched " + str(results))
+					else:
+						write_log("Node "+ str(self.node_id) + " not-matched " + str(results))
+
 				sleep(self.node_interval)
 		if self.node_type == "dns_check":
 			print "dns check and stuff"
 		if self.node_type == "smtp_check":
 			print "smtp banner check"
 		if self.node_type == "pop_check":
-			print "pop check"
+			#print "pop check"
+			## telnet mail.zero1.com 110
+			#Trying 173.201.192.199...
+			#Connected to pop.where.secureserver.net.
+			#+OK <18350.1416166541@p3plpop07-01.prod.phx3.secureserver.net>
+			while (int(self.node_status) == 1):
+				#print self.printConfig()
+				try:
+					ip = gethostbyname(self.node_host)
+				except:
+					ip = None
+
+				if ip == None:
+					write_log("Node "+ str(self.node_id) + " DNS ERROR, Unable to resolve host " + str(self.node_host))
+
+				if ip:
+					try:
+						pop_sock = socket(AF_INET, SOCK_STREAM) # TCP Socket
+						pop_sock.settimeout(int(self.node_timeout))
+						#sock.connect((self.node_host, self.node_port))
+						pop_sock.connect((self.node_host, 110))
+					except:
+						#pop_sock.close()
+						pop_sock = None
+						write_log("Node "+ str(self.node_id) + " Socket ERROR, Unable to create socket ")
+
+					if pop_sock:
+						#print("[+] Connected to %s:%d"%(self.node_host, 110))
+						try:
+							pop_sock.send("Check\r\n\r\n")
+							banner = str(pop_sock.recv(2048))
+						except:
+							banner = None
+
+						if banner:
+							#banner = banner.replace("\n", "")
+							write_log("Node "+ str(self.node_id) + " port OK, banner: " + str(banner))
+						else:
+							write_log("Node "+ str(self.node_id) + " port OK, banner ERROR ")
+						pop_sock.close() # Done
+					else:
+						write_log("Node "+ str(self.node_id) + " port ERROR, banner ERROR")
+				sleep(self.node_interval)
 
 	def printConfig(self):
 		print "Node \nID: " + str(self.node_id)

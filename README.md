@@ -7,6 +7,7 @@ At the moment we have the following sensons <br>
     -http load time (frontend + backend) <br>
     -http status <br>
     -http title <br>
+    -http text content matching <br>
 The project is not finished yet as we're currently working on it. <br>
 
 At the moment we're working on: <br>
