@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from socket import socket, htons, AF_INET, SOCK_STREAM, SOCK_DGRAM, SOCK_RAW, getprotobyname, gethostbyname, error, gaierror
+from socket import socket, htons, AF_INET, SOCK_STREAM, SOCK_DGRAM, SOCK_RAW, getprotobyname, gethostbyname, setdefaulttimeout, error, gaierror
 from struct import pack, unpack
 from random import random  # Possibly switch to os.urandom()
 from select import select
@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import signal
+import string
 import syslog
 import base64
 import httplib
@@ -21,6 +22,7 @@ import requests
 import datetime
 import threading
 import argparse
+import Queue, threading
 
 # NYJE
 # do marri nji file config nga diku ( aktualisht thjesht do lexoje nje file )
@@ -81,6 +83,149 @@ def write_log(node_event):
 	finally:
 		#print >>sys.stderr, 'closing socket'
 		sender.close()
+
+def blacklist_check(hst):
+
+    serverlist = [
+    ',access.redhawk.org',
+    'b.barracudacentral.org',
+    'bl.shlink.org',
+    'bl.spamcannibal.org',
+    'bl.spamcop.net',
+    'bl.tiopan.com',
+    'blackholes.wirehub.net',
+    'blacklist.sci.kun.nl',
+    'block.dnsbl.sorbs.net',
+    'blocked.hilli.dk',
+    'bogons.cymru.com',
+    'cart00ney.surriel.com',
+    'cbl.abuseat.org',
+    'cblless.anti-spam.org.cn',
+    'dev.null.dk',
+    'dialup.blacklist.jippg.org',
+    'dialups.mail-abuse.org',
+    'dialups.visi.com',
+    'dnsbl.abuse.ch',
+    'dnsbl.anticaptcha.net',
+    'dnsbl.antispam.or.id',
+    'dnsbl.dronebl.org',
+    'dnsbl.justspam.org',
+    'dnsbl.kempt.net',
+    'dnsbl.sorbs.net',
+    'dnsbl.tornevall.org',
+    'dnsbl-1.uceprotect.net',
+    'duinv.aupads.org',
+    'dnsbl-2.uceprotect.net',
+    'dnsbl-3.uceprotect.net',
+    'dul.dnsbl.sorbs.net',
+    'dul.ru',
+    'escalations.dnsbl.sorbs.net',
+    'hil.habeas.com',
+    'black.junkemailfilter.com',
+    'http.dnsbl.sorbs.net',
+    'intruders.docs.uu.se',
+    'ips.backscatterer.org',
+    'korea.services.net',
+    'l2.apews.org',
+    'mail-abuse.blacklist.jippg.org',
+    'misc.dnsbl.sorbs.net',
+    'msgid.bl.gweep.ca',
+    'new.dnsbl.sorbs.net',
+    'no-more-funn.moensted.dk',
+    'old.dnsbl.sorbs.net',
+    'opm.tornevall.org',
+    'pbl.spamhaus.org',
+    'proxy.bl.gweep.ca',
+    'dyna.spamrats.com',
+    'spam.spamrats.com',
+    'psbl.surriel.com',
+    'pss.spambusters.org.ar',
+    'rbl.schulte.org',
+    'rbl.snark.net',
+    'recent.dnsbl.sorbs.net',
+    'relays.bl.gweep.ca',
+    'relays.bl.kundenserver.de',
+    'relays.mail-abuse.org',
+    'relays.nether.net',
+    'rsbl.aupads.org',
+    'sbl.spamhaus.org',
+    'smtp.dnsbl.sorbs.net',
+    'socks.dnsbl.sorbs.net',
+    'spam.dnsbl.sorbs.net',
+    'spam.olsentech.net',
+    'spamguard.leadmon.net',
+    'spamsources.fabel.dk',
+    'tor.ahbl.org',
+    'tor.dnsbl.sectoor.de',
+    'ubl.unsubscore.com',
+    'web.dnsbl.sorbs.net',
+    'xbl.spamhaus.org',
+    'zen.spamhaus.org',
+    'zombie.dnsbl.sorbs.net',
+    'dnsbl.inps.de',
+    'dyn.shlink.org',
+    'rbl.megarbl.net',
+    'bl.mailspike.net'
+    ]
+
+    queue = Queue.Queue()
+    global on_blacklist
+    on_blacklist = []
+
+    class ThreadRBL(threading.Thread):
+        def __init__(self, queue):
+            threading.Thread.__init__(self)
+            self.queue = queue
+
+        def run(self):
+            while True:
+                #grabs host from queue
+                hostname,root_name = self.queue.get()
+
+                check_host = "%s.%s" % (hostname, root_name)
+                try:
+                    setdefaulttimeout(5)
+                    check_addr = gethostbyname(check_host)
+                except error:
+                    check_addr = None
+                if check_addr != None and "127.0.0." in check_addr:
+                    on_blacklist.append(root_name)
+
+                #signals to queue job is done
+                self.queue.task_done()
+
+
+    host = None
+    addr = hst
+
+    if host:
+        try:
+            addr = socket.gethostbyname(host)
+        except:
+            return "ERROR: Host '%s' not found - maybe try a FQDN?" % host 
+    
+    addr_parts = string.split(addr, '.')
+    addr_parts.reverse()
+    check_name = string.join(addr_parts, '.')
+
+    host = addr
+
+    for i in range(5):
+        t = ThreadRBL(queue)
+        t.setDaemon(True)
+        t.start() 
+   
+    #populate queue with data
+    for blhost in serverlist:
+        queue.put((check_name,blhost))
+
+    queue.join()
+    #sleep(5)
+    
+    if len(on_blacklist) >= 0:
+		return 'ERROR: %s on %s spam blacklists|%s' % (host,len(on_blacklist),on_blacklist)
+    else:
+		return 'OK: %s not on known spam blacklists' % host
 
 def checksum(source_string):
 	checksum = 0
@@ -420,14 +565,13 @@ class node:
 				sleep(self.node_interval)
 		if self.node_type == "dns_check":
 			print "dns check and stuff"
+		if self.node_type == "blacklist":
+			while (int(self.node_status) == 1):
+				write_log("Node "+ str(self.node_id) + " " + blacklist_check(self.node_host))
+				sleep(self.node_interval)
 		if self.node_type == "smtp_check":
 			print "smtp banner check"
 		if self.node_type == "pop_check":
-			#print "pop check"
-			## telnet mail.zero1.com 110
-			#Trying 173.201.192.199...
-			#Connected to pop.where.secureserver.net.
-			#+OK <18350.1416166541@p3plpop07-01.prod.phx3.secureserver.net>
 			while (int(self.node_status) == 1):
 				#print self.printConfig()
 				try:
