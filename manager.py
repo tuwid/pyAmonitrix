@@ -41,7 +41,7 @@ while True:
 			for x in range (0,line_nr):
 				proc.append(x)
 				proc[x] = subprocess.Popen(["./sauron.py", "-n "+str(x)], shell=False)
-				sleep(1)
+				sleep(2)
 				if str(proc[x].poll() == "None"):
 					print "Service " + str(x) + " is checking "
 					raport += "Service " + str(x) + " is checking \n"

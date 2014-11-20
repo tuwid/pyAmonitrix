@@ -47,6 +47,31 @@ root@valhalla:/home/tuwid/Dropbox/pamon# ./sauron.py -n 2 <br>
 200  <br>
 200  <br>
 
+root@valhalla:/home/tuwid/Dropbox/pamon# ./sauron.py -n 6  <br>
+
+Node 6 port OK, banner: +OK Dovecot ready.   11:22:36.363076  <br>
+Node 6 port OK, banner: +OK Dovecot ready.   11:22:43.784474  <br>
+Node 6 port OK, banner: +OK Dovecot ready.   11:22:51.204418  <br>
+  <br>
+root@valhalla:/home/tuwid/Dropbox/pamon# ./sauron.py -n 5  <br>
+
+Node 5 ['404 Not Found'] 11:23:36.954337  <br>
+Node 5 ['404 Not Found'] 11:23:47.054163  <br>
+Node 5 ['404 Not Found'] 11:23:57.411693  <br>
+Node 5 ['404 Not Found'] 11:24:08.504208  <br>
+Node 5 ['404 Not Found'] 11:24:18.596090  <br>
+  <br>
+
+root@valhalla:/home/tuwid/Dropbox/pamon# ./sauron.py -n 4  <br>
+
+Node 4 matched ['Te dhena mbi situaten e blacklisting'] 11:24:36.522339  <br>
+Node 4 matched ['Te dhena mbi situaten e blacklisting'] 11:24:46.641266  <br>
+Node 4 matched ['Te dhena mbi situaten e blacklisting'] 11:24:56.743526  <br>
+Node 4 matched ['Te dhena mbi situaten e blacklisting'] 11:25:06.838635  <br>
+Node 4 matched ['Te dhena mbi situaten e blacklisting'] 11:25:16.969715  <br>
+Node 4 matched ['Te dhena mbi situaten e blacklisting'] 11:25:27.107149  <br>
+  <br>
+
 On the syslog end: <br>
 tuwid@valhalla:~$ tail -f /var/log/syslog | grep sauron <br>
 

@@ -72,7 +72,7 @@ def write_log(node_event):
 	try:
 
 		# Send data
-		#print >>sys.stderr, node_event
+		print >>sys.stderr, node_event
 		sent = sender.sendto(node_event, server_address)
 
 		# Receive response
