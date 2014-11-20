@@ -8,6 +8,7 @@ At the moment we have the following sensons <br>
     -http status <br>
     -http title <br>
     -POP check <br>
+    -smtp check <br>
     -blacklist check <br>
     -http text content matching <br>
 The project is not finished yet as we're currently working on it. <br>

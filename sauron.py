@@ -72,7 +72,7 @@ def write_log(node_event):
 	try:
 
 		# Send data
-		print >>sys.stderr, node_event
+		#print >>sys.stderr, node_event
 		sent = sender.sendto(node_event, server_address)
 
 		# Receive response
@@ -420,7 +420,7 @@ class node:
 				backendPerformance = responseStart - navigationStart
 				frontendPerformance = domComplete - responseStart
 				
-				print ("Node " + str(self.node_id) + "  Back End: %s" % backendPerformance + "ms" +  " Front End: %s" % frontendPerformance + "ms " + " Total: " + str(backendPerformance + frontendPerformance) + "ms ")
+				#print ("Node " + str(self.node_id) + "  Back End: %s" % backendPerformance + "ms" +  " Front End: %s" % frontendPerformance + "ms " + " Total: " + str(backendPerformance + frontendPerformance) + "ms ")
 				write_log("Node " + str(self.node_id) + "  Back End: %s" % backendPerformance + "ms" +  " Front End: %s" % frontendPerformance + "ms " + " Total: " + str(backendPerformance + frontendPerformance) + "ms ")
 				browser.quit()
 
@@ -429,18 +429,17 @@ class node:
 
 		if self.node_type == "http_title":
 			while (int(self.node_status) == 1):
-
 				try:
 					r = requests.get(self.node_url)
 				except:
 					sys.exit("not hmm")
-				print r.status_code
+				#print r.status_code
 				#print r.headers
 				#print r.content
 				source = r.content
 				pattern = re.compile(r'<title[^>]*>([^<]+)</title>', flags=re.DOTALL)
 				results = pattern.findall(source)
-				print results
+				#print results
 				#title = re.match("<title(?:\s.+?)?>", source )
 				#if title:
 				#	print title.group(1)
@@ -483,11 +482,11 @@ class node:
 					e = sys.exc_info()[0]
 					#print e
 					web_error = "Error Unable to connect to " + str(e)
-					print web_error
+					#print web_error
 					write_log("Node "+ str(self.node_id) + " " + str(web_error))
 				if not web_error:
 					response = r.getresponse()
-					print response.status, response.reason
+					#print response.status, response.reason
 					write_log("Node "+ str(self.node_id) + " " + str(response.status) + " " +  response.reason)
 				sleep(self.node_interval)
 
@@ -504,7 +503,7 @@ class node:
 				except:
 					ping_error = "Unable to resolve host " + str(self.node_host) + " " + str(sys.exc_info()[0])
 					write_log("Node "+ str(self.node_id) + " " + str(ping_error))
-					print ping_error
+					#print ping_error
 					#sys.exit("")
 				if ping_error == "":
 					count = 10
@@ -515,12 +514,12 @@ class node:
 					for seqn in xrange(count):
 						log.append(echo(str(self.node_host), timeout))
 						if log[-1] is None:
-						 	print("echo timeout... ")
+						 	#print("echo timeout... ")
 							fail += 1
 							write_log("Node "+ str(self.node_id) + " " + "request timeout")
 						else:
 							write_log("Node "+ str(self.node_id) + " " + str(round(log[-1]*1000, 3)))
-							print("echo from {}:  delay={} ms").format(host, round(log[-1]*1000, 3))
+							#print("echo from {}:  delay={} ms").format(host, round(log[-1]*1000, 3))
 						sleep(floodlock)
 				sleep(self.node_interval)
 			#print("sent={} received={} ratio={}%".format(count, count-fail, (float(count-fail) * 100)/count))
@@ -551,7 +550,7 @@ class node:
 					#print e
 					web_error = "Error Unable to connect to " + str(e)
 					#sys.exit('problem pra')
-					print web_error
+					#print web_error
 					write_log("Node "+ str(self.node_id) + " " + str(web_error))
 				if not web_error:
 					pattern = re.compile(self.node_text_match, flags=re.DOTALL)
@@ -570,7 +569,43 @@ class node:
 				write_log("Node "+ str(self.node_id) + " " + blacklist_check(self.node_host))
 				sleep(self.node_interval)
 		if self.node_type == "smtp_check":
-			print "smtp banner check"
+			while (int(self.node_status) == 1):
+				#print self.printConfig()
+				try:
+					ip = gethostbyname(self.node_host)
+				except:
+					ip = None
+				if ip == None:
+					write_log("Node "+ str(self.node_id) + " DNS ERROR, Unable to resolve host " + str(self.node_host))
+				if ip:
+					try:
+						pop_sock = socket(AF_INET, SOCK_STREAM) # TCP Socket
+						pop_sock.settimeout(int(self.node_timeout))
+						#sock.connect((self.node_host, self.node_port))
+						pop_sock.connect((self.node_host, 25))
+					except:
+						#pop_sock.close()
+						pop_sock = None
+						write_log("Node "+ str(self.node_id) + " Socket ERROR, Unable to create socket ")
+
+					if pop_sock:
+						#print("[+] Connected to %s:%d"%(self.node_host, 110))
+						try:
+							pop_sock.send("Check\r\n\r\n")
+							banner = str(pop_sock.recv(2048))
+						except:
+							banner = None
+
+						if banner:
+							#banner = banner.replace("\n", "")
+							write_log("Node "+ str(self.node_id) + " port OK, banner: " + str(banner))
+						else:
+							write_log("Node "+ str(self.node_id) + " port OK, banner ERROR ")
+						pop_sock.close() # Done
+					else:
+						write_log("Node "+ str(self.node_id) + " port ERROR, banner ERROR")
+				sleep(self.node_interval)
+
 		if self.node_type == "pop_check":
 			while (int(self.node_status) == 1):
 				#print self.printConfig()
