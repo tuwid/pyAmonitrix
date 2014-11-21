@@ -32,25 +32,25 @@ while True:
 
     if data:
 		if data == "help":
-			sock.sendto(" \n start nodes \n node status \n kill nodes \n kill node nr X", address)
-		elif data == "start nodes":
+			sock.sendto(" \n engine start \n engines status \n engine stop \n kill node nr X", address)
+		elif data == "engine start":
 			raport = "\n"
 			#print "u futem tek starti"
 			line_nr = len(get_lines())
 			raport += "Got " + str(line_nr) + " lines \n"
+			sock.sendto("Starting services... Please wait \n", address)
 			for x in range (0,line_nr):
 				proc.append(x)
 				proc[x] = subprocess.Popen(["./sauron.py", "-n "+str(x)], shell=False)
 				sleep(2)
 				if str(proc[x].poll() == "None"):
 					print "Service " + str(x) + " is checking "
-					raport += "Service " + str(x) + " is checking \n"
+					#raport += "Service " + str(x) + " is checking \n"
 				else:
-					raport += "Service " + str(x) + " is not checking \n"
+					#raport += "Service " + str(x) + " is not checking \n"
 					print "Service " + str(x) + " is not checking "	
 			        #print >>sys.stderr, 'sent %s bytes back to %s' % (sent, address)
-			sock.sendto(raport, address)
-		elif data == "node status":
+		elif data == "engine status":
 			raport = "\n"
 			line_nr = len(get_lines())
 			raport = "Jane " + str(line_nr) + " sherbime tek file i config \n"
@@ -62,7 +62,7 @@ while True:
 					else:
 						raport += "Node " + str(x) + " not monitoring \n"
 			sock.sendto(raport , address)
-		elif data == "kill nodes":
+		elif data == "engine stop":
 			raport = "\n"
 			line_nr = len(get_lines())
 			if len(proc) > 0:
