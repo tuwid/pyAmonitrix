@@ -6,8 +6,8 @@ from random import random  # Possibly switch to os.urandom()
 from select import select
 from time import time, sleep
 from sys import version_info as py_version
-from pyvirtualdisplay import Display
-from selenium import webdriver
+# from pyvirtualdisplay import Display
+# from selenium import webdriver
 
 
 import os
@@ -24,10 +24,6 @@ import threading
 import argparse
 import Queue, threading
 
-# this software is free as in, bohh free stuff you know ? 
-# special thnx to WILLIAM T CHRISTENSEN for helping me out with python while writing this 
-# 
-
 def signal_handler(signal, frame):
 		print('Ctrl+C!')
 		sys.exit(0)
@@ -39,9 +35,6 @@ def check_if_root():
 	if not os.geteuid() == 0:
 		#sys.exit('Script must be run as root')
 		sys.exit('Y U NO ROOT ??')
-	else:
-		print ""
-		#print "Root check OK"
 
 check_if_root()
 
@@ -53,32 +46,14 @@ xrange = range if py_version[0] >= 3 else xrange
 
 ICMP_ECHO_REQUEST = 8
 ICMP_CODE = getprotobyname("icmp")
-ERROR_DESCR = {1: "ICMP messages can only be sent from processes running as root.",
-				10013: "ICMP messages can only be sent by users or processes with administrator rights."}
+ERROR_DESCR = {1: "ICMP messages can only be sent from processes running as root.", 10013: "ICMP messages can only be sent by users or processes with administrator rights."}
 
 
-def write_log(node_event):
-	node_event = node_event.replace("\n"," ")
-	node_event = node_event.replace("\r"," ")
-	node_event += " " +str(datetime.datetime.now().time())
-	syslog.syslog(syslog.LOG_ERR, node_event)
-
-	sender = socket(AF_INET, SOCK_DGRAM)
-	server_address = ('localhost', 10000)	
-	try:
-
-		# Send data
-		print >>sys.stderr, node_event
-		sent = sender.sendto(node_event, server_address)
-
-		# Receive response
-		#print >>sys.stderr, 'waiting to receive'
-		#data, server = sock.recvfrom(4096)
-		#print >>sys.stderr, 'received "%s"' % data
-
-	finally:
-		#print >>sys.stderr, 'closing socket'
-		sender.close()
+def write_log(_sensor_event):
+	_sensor_event = _sensor_event.replace("\n"," ")
+	_sensor_event = _sensor_event.replace("\r"," ")
+	_sensor_event += " " +str(datetime.datetime.now().time())
+	syslog.syslog(syslog.LOG_ERR, _sensor_event)
 
 def blacklist_check(hst):
 
@@ -190,7 +165,6 @@ def blacklist_check(hst):
                 #signals to queue job is done
                 self.queue.task_done()
 
-
     host = None
     addr = hst
 
@@ -219,9 +193,9 @@ def blacklist_check(hst):
     #sleep(5)
     
     if len(on_blacklist) >= 0:
-		return 'ERROR: %s on %s spam blacklists|%s' % (host,len(on_blacklist),on_blacklist)
+		return 'ERROR',' %s on %s spam blacklists|%s' % (host,len(on_blacklist),on_blacklist)
     else:
-		return 'OK: %s not on known spam blacklists' % host
+		return 'OK', '%s not on known spam blacklists' % host
 
 def checksum(source_string):
 	checksum = 0
@@ -240,7 +214,6 @@ def checksum(source_string):
 	answer = ~checksum
 	answer &= 0xffff
 	return answer >> 8 | (answer << 8 & 0xff00)
-
 
 def create_packet(id):
 	"""Creates a new echo request packet based on the given "id"."""
@@ -369,87 +342,100 @@ def verbose(dest_addr, count=8, timeout=1, floodlock=1, infinite=False):
 			round(sum([x*1000 for x in log if x is not None])/len(log), 3), round(max(log)*1000, 3)))
 
 
-class node:
-	#"""the node thing""" 
-	def __init__(self,node_id,node_type,node_host,node_timeout,node_interval):
-		self.node_id = int(node_id)
-		self.node_type = str(node_type)
-		self.node_status = "1"
-		self.node_host = node_host
-		self.node_timeout = int(node_timeout)
-		self.node_interval = int(node_interval)
-		self.node_url = "-1"
-		self.node_text_match = "-1"
+def write_log2(_sensor_id,_sensor_status,_sensor_message):
+	_sensor_message = _sensor_message.replace("\n"," ")
+	_sensor_message = _sensor_message.replace("\r"," ")
+	_sensor_message += " " +str(datetime.datetime.now().time())
+	payload = { 'service_id' : _sensor_id, 'status' : _sensor_status, 'message': _sensor_message}
+	r = requests.post("http://monx.zero1.al:31416/api/service_data",data=payload)
+
+
+
+class _sensor:
+	#"""the _sensor thing""" 
+	def __init__(self,_sensor_id,_sensor_type,_sensor_host,_sensor_timeout,_sensor_interval):
+		self._sensor_id = int(_sensor_id)
+		self._sensor_type = str(_sensor_type)
+		self._sensor_status = "1"
+		self._sensor_host = _sensor_host
+		self._sensor_timeout = int(_sensor_timeout)
+		self._sensor_interval = int(_sensor_interval)
+		self._sensor_url = "-1"
+		self._sensor_text_match = "-1"
 
 	def getID(self):
-		return self.node_id
+		return self._sensor_id
 	def getStatus(self):
-		return self.node_status
+		return self._sensor_status
 	def setStatus(self,new_status):
-		self.node_status = new_status
+		self._sensor_status = new_status
 	def setTextmatch(self,text_match):
 		try:
-			self.node_text_match = base64.b64decode(str(text_match))
+			self._sensor_text_match = base64.b64decode(str(text_match))
 		except:
 			write_log("invalid text_match")
 			sys.exit("invalid text_match")
-	def setUrl(self,node_url):
+	def setUrl(self,_sensor_url):
 		# the url comes in a base64 format 
 		try:
-			self.node_url = base64.b64decode(str(node_url))
+			self._sensor_url = base64.b64decode(str(_sensor_url))
 		except:
 			write_log("invalid url")
 			sys.exit("invalid url")
 	def serviceCheck(self):
 
-		if self.node_type == "http_load":
-			display = Display(visible=0, size=(800, 600))
-			display.start()
-			while (int(self.node_status) == 1):
-				browser = webdriver.Firefox()
-				browser.get(self.node_url)
-				#print browser.title
-				navigationStart = browser.execute_script("return window.performance.timing.navigationStart")
-				responseStart = browser.execute_script("return window.performance.timing.responseStart")
-				domComplete = browser.execute_script("return window.performance.timing.domComplete")
+		# if self._sensor_type == "http_load":
+		# 	display = Display(visible=0, size=(800, 600))
+		# 	display.start()
+		# 	while (int(self._sensor_status) == 1):
+		# 		browser = webdriver.Firefox()
+		# 		browser.get(self._sensor_url)
+		# 		#print browser.title
+		# 		navigationStart = browser.execute_script("return window.performance.timing.navigationStart")
+		# 		responseStart = browser.execute_script("return window.performance.timing.responseStart")
+		# 		domComplete = browser.execute_script("return window.performance.timing.domComplete")
 
-				backendPerformance = responseStart - navigationStart
-				frontendPerformance = domComplete - responseStart
+		# 		backendPerformance = responseStart - navigationStart
+		# 		frontendPerformance = domComplete - responseStart
 				
-				#print ("Node " + str(self.node_id) + "  Back End: %s" % backendPerformance + "ms" +  " Front End: %s" % frontendPerformance + "ms " + " Total: " + str(backendPerformance + frontendPerformance) + "ms ")
-				write_log("Node " + str(self.node_id) + " OK Back End: %s" % backendPerformance + "ms" +  " Front End: %s" % frontendPerformance + "ms " + " Total: " + str(backendPerformance + frontendPerformance) + "ms ")
-				browser.quit()
+		# 		#print ("_sensor " + str(self._sensor_id) + "  Back End: %s" % backendPerformance + "ms" +  " Front End: %s" % frontendPerformance + "ms " + " Total: " + str(backendPerformance + frontendPerformance) + "ms ")
+		# 		#write_log2("_sensor " + str(self._sensor_id) , " OK " ,"Back End: %s" % backendPerformance + "ms" +  " Front End: %s" % frontendPerformance + "ms " + " Total: " + str(backendPerformance + frontendPerformance) + "ms ")
+		# 		write_log2("_sensor " + str(self._sensor_id) + " OK " + "Back End: %s" % backendPerformance + "ms" +  " Front End: %s" % frontendPerformance + "ms " + " Total: " + str(backendPerformance + frontendPerformance) + "ms ")
+		# 		browser.save_screenshot('screenshot_pra.png')
+		# 		browser.quit()
 
-				sleep(self.node_interval)
-			display.stop()
+		# 		sleep(self._sensor_interval)
+		# 	display.stop()
 
-		if self.node_type == "http_title":
-			while (int(self.node_status) == 1):
+		if self._sensor_type == "http_title":
+			while (int(self._sensor_status) == 1):
 				try:
-					r = requests.get(self.node_url)
+					r = requests.get(self._sensor_url)
 					#print r.status_code
 					#print r.headers
 					#print r.content
 					source = r.content
 					pattern = re.compile(r'<title[^>]*>([^<]+)</title>', flags=re.DOTALL)
 					results = pattern.findall(source)
-					write_log("Node "+ str(self.node_id) + " OK " + str(results))
+					#write_log("_sensor "+ str(self._sensor_id) + " OK " + str(results))
+					write_log2(str(self._sensor_id) , " OK " , str(results))
 				except:
-					write_log("Node "+ str(self.node_id) + " ERROR, unable to get http title ")
+					#write_log("_sensor "+ str(self._sensor_id) + " ERROR, unable to get http title ")
+					write_log2(str(self._sensor_id) , "ERROR" , " Unable to get http title ")
 					#sys.exit("not hmm")
-				sleep(self.node_interval)
+				sleep(self._sensor_interval)
 
-		if self.node_type == "http_status":
-			#if str(self.node_url).startswith("http"):
+		if self._sensor_type == "http_status":
+			#if str(self._sensor_url).startswith("http"):
 			#	print ""
 			#else:
-			#	self.node_url = "http://"+ str(self.node_url)
+			#	self._sensor_url = "http://"+ str(self._sensor_url)
 			#
 			#print self.printConfig()
 
-			while (int(self.node_status) == 1):
+			while (int(self._sensor_status) == 1):
 				web_error = ""
-				full_url = self.node_url.split("/")
+				full_url = self._sensor_url.split("/")
 				base_url = full_url[2]
 				if ":" in base_url:
 					service_port = base_url.split(":")[1] 
@@ -465,7 +451,7 @@ class node:
 					if(part_nr > 3):
 						part_url += "/" + piece 
 						#print part_url
-				r = httplib.HTTPConnection(base_url, service_port, timeout=self.node_timeout)
+				r = httplib.HTTPConnection(base_url, service_port, timeout=self._sensor_timeout)
 				try:
 					r.request("GET",part_url)
 				except:
@@ -473,52 +459,55 @@ class node:
 					#print e
 					web_error = "Error Unable to connect to " + str(e)
 					#print web_error
-					write_log("Node "+ str(self.node_id) + " ERROR " + str(web_error))
+					#write_log("_sensor "+ str(self._sensor_id) + " ERROR " + str(web_error))
+					write_log2(str(self._sensor_id) , "ERROR" , str(web_error))
 				if not web_error:
 					response = r.getresponse()
 					#print response.status, response.reason
-					write_log("Node "+ str(self.node_id) + " OK " + str(response.status) + " " +  response.reason)
-				sleep(self.node_interval)
+					#write_log("_sensor "+ str(self._sensor_id) + " OK " + str(response.status) + " " +  response.reason)
+					write_log2(str(self._sensor_id) , "OK" , str(response.status) + " " +  response.reason)
+				sleep(self._sensor_interval)
 
-		if self.node_type == "ping":
+		if self._sensor_type == "ping":
 			#print self.printConfig()
 			ping_error = ""
 			#print "doing ping stuff"
-			#verbose(self.node_host,4,2)
+			#verbose(self._sensor_host,4,2)
 			#verbose("lulz.eua",4,2)
-			while (int(self.node_status) == 1):
-				interval = self.node_interval
+			while (int(self._sensor_status) == 1):
+				interval = self._sensor_interval
 				try:
-					host = gethostbyname(self.node_host)
+					host = gethostbyname(self._sensor_host)
 				except:
-					ping_error = "Unable to resolve host " + str(self.node_host) + " " + str(sys.exc_info()[0])
-					write_log("Node "+ str(self.node_id) + " ERROR " + str(ping_error))
+					ping_error = "Unable to resolve host " + str(self._sensor_host) + " " + str(sys.exc_info()[0])
+					#write_log("_sensor "+ str(self._sensor_id) + " ERROR " + str(ping_error))
+					write_log2(str(self._sensor_id) , "ERROR" , str(ping_error))
 					#print ping_error
 					#sys.exit("")
 				if ping_error == "":
 					count = 10
 					floodlock = 1
-					timeout = self.node_timeout
+					timeout = self._sensor_timeout
 					log = []
 					fail = 0
 					for seqn in xrange(count):
-						log.append(echo(str(self.node_host), timeout))
+						log.append(echo(str(self._sensor_host), timeout))
 						if log[-1] is None:
 						 	#print("echo timeout... ")
 							fail += 1
-							write_log("Node "+ str(self.node_id) + " ERROR " + "request timeout")
+							write_log2(str(self._sensor_id) , "ERROR" , "request timeout")
 						else:
-							write_log("Node "+ str(self.node_id) + " OK " + str(round(log[-1]*1000, 3)))
+							write_log2(str(self._sensor_id) , "OK" , str(round(log[-1]*1000, 3)))
 							#print("echo from {}:  delay={} ms").format(host, round(log[-1]*1000, 3))
 						sleep(floodlock)
-				sleep(self.node_interval)
+				sleep(self._sensor_interval)
 			#print("sent={} received={} ratio={}%".format(count, count-fail, (float(count-fail) * 100)/count))
 			#print("{} / {} / {}	(min/avg/max in ms)".format(round(min(log)*1000, 3), round(sum([x*1000 for x in log if x is not None])/len(log), 3), round(max(log)*1000, 3)))
 
-		if self.node_type == "http_content":
-			while (int(self.node_status) == 1):
+		if self._sensor_type == "http_content":
+			while (int(self._sensor_status) == 1):
 				web_error = ""
-				full_url = self.node_url.split("/")
+				full_url = self._sensor_url.split("/")
 				base_url = full_url[2]
 				if ":" in base_url:
 					service_port = base_url.split(":")[1] 
@@ -533,52 +522,53 @@ class node:
 					if(part_nr > 3):
 						part_url += "/" + piece 
 				try:
-					r = requests.get(self.node_url)
+					r = requests.get(self._sensor_url)
 				except:
 					e = sys.exc_info()[0]
 					#print e
 					web_error = "Error Unable to connect to " + str(e)
 					#sys.exit('problem pra')
 					#print web_error
-					write_log("Node "+ str(self.node_id) + " ERROR " + str(web_error))
+					write_log2(str(self._sensor_id) , "ERROR" , str(web_error))
 				if not web_error:
-					pattern = re.compile(self.node_text_match, flags=re.DOTALL)
+					pattern = re.compile(self._sensor_text_match, flags=re.DOTALL)
 					results = pattern.findall(str(r.content))
 					#print results
 					if(results):
-						write_log("Node "+ str(self.node_id) + " OK text matched " + str(results))
+						write_log2(str(self._sensor_id) , "OK" , "text matched " + str(results))
 					else:
-						write_log("Node "+ str(self.node_id) + " ERROR text not-matched " + str(results))
-				sleep(self.node_interval)
+						write_log2(str(self._sensor_id) , "ERROR", " text not-matched " + str(results))
+				sleep(self._sensor_interval)
 
-		if self.node_type == "dns_check":
+		if self._sensor_type == "dns_check":
 			print "dns check and stuff"
-		if self.node_type == "blacklist":
-			while (int(self.node_status) == 1):
-				write_log("Node "+ str(self.node_id) + " " + blacklist_check(self.node_host))
-				sleep(self.node_interval)
-		if self.node_type == "smtp_check":
-			while (int(self.node_status) == 1):
+		if self._sensor_type == "blacklist":
+			while (int(self._sensor_status) == 1):
+				stat,msg = blacklist_check(self._sensor_host)
+				write_log2(str(self._sensor_id) , stat, msg)
+				sleep(self._sensor_interval)
+		if self._sensor_type == "smtp_check":
+			while (int(self._sensor_status) == 1):
 				#print self.printConfig()
 				try:
-					ip = gethostbyname(self.node_host)
+					ip = gethostbyname(self._sensor_host)
 				except:
 					ip = None
 				if ip == None:
-					write_log("Node "+ str(self.node_id) + " ERROR ,DNS Error Unable to resolve host " + str(self.node_host))
+					write_log2(str(self._sensor_id) , "ERROR" ,"DNS Error Unable to resolve host " + str(self._sensor_host))
 				if ip:
 					try:
 						pop_sock = socket(AF_INET, SOCK_STREAM) # TCP Socket
-						pop_sock.settimeout(int(self.node_timeout))
-						#sock.connect((self.node_host, self.node_port))
-						pop_sock.connect((self.node_host, 25))
+						pop_sock.settimeout(int(self._sensor_timeout))
+						#sock.connect((self._sensor_host, self._sensor_port))
+						pop_sock.connect((self._sensor_host, 25))
 					except:
 						#pop_sock.close()
 						pop_sock = None
-						write_log("Node "+ str(self.node_id) + " ERROR ,Socket errror Unable to create socket ")
+						write_log2(str(self._sensor_id) , "ERROR" ," Socket errror Unable to create socket ")
 
 					if pop_sock:
-						#print("[+] Connected to %s:%d"%(self.node_host, 110))
+						#print("[+] Connected to %s:%d"%(self._sensor_host, 110))
 						try:
 							pop_sock.send("Check\r\n\r\n")
 							banner = str(pop_sock.recv(2048))
@@ -587,38 +577,38 @@ class node:
 
 						if banner:
 							#banner = banner.replace("\n", "")
-							write_log("Node "+ str(self.node_id) + " OK , port OK, banner: " + str(banner))
+							write_log2(str(self._sensor_id) , "OK" ," port OK, banner: " + str(banner))
 						else:
-							write_log("Node "+ str(self.node_id) + " ERROR , port OK, sbanner ERROR ")
+							write_log2(str(self._sensor_id) , "ERROR" ," port OK, sbanner ERROR ")
 						pop_sock.close() # Done
 					else:
-						write_log("Node "+ str(self.node_id) + " ERROR ,port ERROR, banner ERROR")
-				sleep(self.node_interval)
+						write_log2(str(self._sensor_id) , "ERROR" ," port ERROR, banner ERROR")
+				sleep(self._sensor_interval)
 
-		if self.node_type == "pop_check":
-			while (int(self.node_status) == 1):
+		if self._sensor_type == "pop_check":
+			while (int(self._sensor_status) == 1):
 				#print self.printConfig()
 				try:
-					ip = gethostbyname(self.node_host)
+					ip = gethostbyname(self._sensor_host)
 				except:
 					ip = None
 
 				if ip == None:
-					write_log("Node "+ str(self.node_id) + " ERROR, DNS error, Unable to resolve host " + str(self.node_host))
+					write_log2( str(self._sensor_id) , "ERROR" ," DNS error, Unable to resolve host " + str(self._sensor_host))
 
 				if ip:
 					try:
 						pop_sock = socket(AF_INET, SOCK_STREAM) # TCP Socket
-						pop_sock.settimeout(int(self.node_timeout))
-						#sock.connect((self.node_host, self.node_port))
-						pop_sock.connect((self.node_host, 110))
+						pop_sock.settimeout(int(self._sensor_timeout))
+						#sock.connect((self._sensor_host, self._sensor_port))
+						pop_sock.connect((self._sensor_host, 110))
 					except:
 						#pop_sock.close()
 						pop_sock = None
-						write_log("Node "+ str(self.node_id) + " ERROR, Socket error, Unable to create socket/connect to host ")
+						write_log2(str(self._sensor_id) , "ERROR" ," Socket error, Unable to create socket/connect to host ")
 
 					if pop_sock:
-						#print("[+] Connected to %s:%d"%(self.node_host, 110))
+						#print("[+] Connected to %s:%d"%(self._sensor_host, 110))
 						try:
 							pop_sock.send("Check\r\n\r\n")
 							banner = str(pop_sock.recv(2048))
@@ -627,22 +617,22 @@ class node:
 
 						if banner:
 							#banner = banner.replace("\n", "")
-							write_log("Node "+ str(self.node_id) + " OK, banner: " + str(banner))
+							write_log2(str(self._sensor_id) , "OK" ," banner: " + str(banner))
 						else:
-							write_log("Node "+ str(self.node_id) + " ERROR, banner ERROR ")
+							write_log2(str(self._sensor_id) , " ERROR, banner ERROR ")
 						pop_sock.close() # Done
 					else:
-						write_log("Node "+ str(self.node_id) + " ERROR, port ERROR ,banner ERROR")
-				sleep(self.node_interval)
+						write_log2(str(self._sensor_id) , "ERROR", "port ERROR ,banner ERROR")
+				sleep(self._sensor_interval)
 
 	def printConfig(self):
-		print "Node \nID: " + str(self.node_id)
-		print "Type: " + str(self.node_type)
-		print "Host: " + str(self.node_host)
-		print "Timeout: " + str(self.node_timeout)
-		print "interval: " + str(self.node_interval)
-		if self.node_url != "-1":
-			print "Url: " + str(self.node_url)
+		print "_sensor \nID: " + str(self._sensor_id)
+		print "Type: " + str(self._sensor_type)
+		print "Host: " + str(self._sensor_host)
+		print "Timeout: " + str(self._sensor_timeout)
+		print "interval: " + str(self._sensor_interval)
+		if self._sensor_url != "-1":
+			print "Url: " + str(self._sensor_url)
 
 def get_file():
 	print "Get file procedure"
@@ -653,18 +643,18 @@ def post_data():
 def parse_file():
 	#print "Parse file procedure"
 	try:
-		node_config_file = open("node_config_file", "r")
+		_sensor_config_file = open("service_config_file", "r")
 	except:
 		sys.exit("Unable to find config file!")
-	#print "Name of the file: ", node_config_file.name
-	config_lines = node_config_file.readlines()
+	#print "Name of the file: ", _sensor_config_file.name
+	config_lines = _sensor_config_file.readlines()
 	#print config_lines
-	node_config_file.close()
+	_sensor_config_file.close()
 
 	return config_lines
 
 def parse_config(cfg_param):
-	nodeList = []
+	_sensorList = []
 
 	for cfg_line in cfg_param:
 		parse1 = cfg_line.split(";")
@@ -691,25 +681,25 @@ def parse_config(cfg_param):
 				conf_url = parse2[1]
 			elif(parse2[0] == "match"):
 				conf_match = parse2[1]
-		nodeList.append(node(conf_id,conf_type,conf_host,conf_timeout,conf_interval))
+		_sensorList.append(_sensor(conf_id,conf_type,conf_host,conf_timeout,conf_interval))
 		if conf_url:
-			nodeList[-1].setUrl(str(conf_url))
+			_sensorList[-1].setUrl(str(conf_url))
 		if conf_match:
-			nodeList[-1].setTextmatch(str(conf_match))
+			_sensorList[-1].setTextmatch(str(conf_match))
 
-	return nodeList
+	return _sensorList
 
-node_list = parse_config(parse_file())
+_sensor_list = parse_config(parse_file())
 
-#node_list[0].printConfig()
-#node_list[1].printConfig()
+#_sensor_list[0].printConfig()
+#_sensor_list[1].printConfig()
 
 
 # kujdes! URL na vjen ne base64---> 
 # test2.setUrl("http://pbx.webservice01.com:8081/zabbix/dashboard.php")
 
-parser = argparse.ArgumentParser(description=''' node id ''')
-parser.add_argument("-n", metavar="node_id", help='node_id')
+parser = argparse.ArgumentParser(description=''' _sensor id ''')
+parser.add_argument("-n", metavar="_sensor_id", help='_sensor_id')
 args = parser.parse_args()
 
 
@@ -717,6 +707,6 @@ if (args.n == None):
 	parser.print_help()
 
 if(args.n):
-	if(int(args.n) > len(node_list)-1 ): # since the numbering starts from 0
-		sys.exit("Specified node id is outside range")
-	node_list[int(args.n)].serviceCheck()
+	if(int(args.n) > len(_sensor_list)-1 ): # since the numbering starts from 0
+		sys.exit("Specified _sensor id is outside range")
+	_sensor_list[int(args.n)].serviceCheck()

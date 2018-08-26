@@ -1,0 +1,24 @@
+
+
+
+Individ
+
+- emer
+- username
+- mbiemer
+- email
+- paketa
+- sensoret
+
+Sensor
+- id
+- host
+- lloj (ping,http_check,...)
+- interval
+- timeout ?
+- confige specifike
+
+Nyje
+- nyje_id
+- IP
+- 

@@ -1,0 +1,9 @@
+id:0;type:ping;host:8.8.8.8;timeout:2;interval:5
+id:1;type:ping;host:8.8.4.4;timeout:2;interval:5
+id:2;type:http_status;host:pbx.webservice01.com;timeout:2;interval:10;url:aHR0cDovL3d3dy5nb29nbGUuY29tLwo=
+id:3;type:http_load;host:www.google.com;timeout:2;interval:10;url:aHR0cHM6Ly93d3cuZ29vZ2xlLmNvbQo=
+id:4;type:http_content;host:pbx.webservice01.com;timeout:2;interval:10;url:aHR0cDovL3BieC53ZWJzZXJ2aWNlMDEuY29tLw==;match:VGUgZGhlbmEgbWJpIHNpdHVhdGVuIGUgYmxhY2tsaXN0aW5n
+id:5;type:http_title;host:www.facebook.com;timeout:5;interval:10;url:aHR0cDovL3d3dy5nb29nbGUuY29t
+id:6;type:pop_check;host:imap.zero1.al;timeout:5;interval:7
+id:7;type:blacklist;host:79.109.1.100;timeout:5;interval:30
+id:8;type:smtp_check;host:mail.bluservice.it;timeout:2;interval:5

@@ -11,15 +11,39 @@ At the moment we have the following sensons <br>
     -smtp check <br>
     -blacklist check <br>
     -http text content matching <br>
+    -web screenshot
+
 The project is not finished yet as we're currently working on it. <br>
 
 At the moment we're working on: <br>
-    -adding new sensors <br>
-    -implement a realtime frontend <br>
-    -setting up the server <br>
-    -mail support <br>
-    -sms support <br>
-    -raporting <br>
+	* broken links ?
+    * domain expire
+	* SLA Management
+	* SLA Monitoring
+	* email round trip 
+    * dns check (dns match)
+    * ssh check
+    * rdp status
+    * certificate expire check
+    * mysql status
+    * MSSQL status
+    * ssh/telnet banner ?
+    * vpn/openvpn/ipsec status
+	* api ?
+    * memcache ?
+    * VOIP
+    * notific via twitter
+    * twitter keyword monitor ? xD 
+    - adding new sensors <br>
+    - implement a realtime frontend <br>
+    - setting up the server <br>
+    - mail notification mail support <br>
+    - sms notification support <br>
+    - raporting <br>
+
+* In a not so distant future:
+	- agent monitoring (linux internals monitoring , memory, disk, routes, interfaces, io-load )
+	- mysql performance stats
 
 At the moment the results are transmited via syslog (for diagnostics) <br>
 
