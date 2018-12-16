@@ -1,27 +1,20 @@
 #!/usr/bin/python
 import pika
-import os
-import sys
-import json
-import time
+import os,sys
 import string
-import logging
-import syslog
-import signal
-import httplib
-import datetime
-import requests
-import datetime
-import threading
+import logging,syslog
+import httplib,requests,json
+import datetime,time
+import threading,signal
 import argparse
-import Queue
-import threading
+import Queue,threading
 from socket import getprotobyname, gethostbyname, setdefaulttimeout, gaierror, error as SocketError
 from urllib2 import Request, urlopen, URLError, HTTPError
 import socket
 import errno
 
-logging.basicConfig(level=logging.INFO)
+debug_level = os.environ.get('DEBUG', 'INFO')
+logging.basicConfig(level=debug_level)
 
 def blacklist_check(hst):
 
@@ -166,101 +159,104 @@ def blacklist_check(hst):
         return 'ok', '%s not on known spam blacklists' % host, 0, []
 
 def httpCheck(url, timeout, depth):
-        if(depth > 3):
-            return "error", "Too many redirects", 0, "301"
-        service_port = 80
-        ssl_enabled = False
-        web_error = ""
-        part_nr = 0
-        part_url = ""
+    logging.debug("Got parameters " + str(url) + " -- " + str(timeout) + " -- " + str(depth))
+    if(depth > 3):
+        logging.debug("Depth more than 3, too many redirect ")
+        return "error", "Too many redirects", 0, "301"
+    service_port = 80
+    ssl_enabled = False
+    web_error = ""
+    part_nr = 0
+    part_url = ""
 
-        if (str(url).startswith("https")):
-            service_port = 443
-            ssl_enabled = True
+    if (str(url).startswith("https")):
+        logging.debug("Url starts with https, ssl_enabled true")
+        service_port = 443
+        ssl_enabled = True
 
-        full_url = url.split("/")
-        base_url = full_url[2]
-        if ":" in base_url:
-            service_port = int(base_url.split(":")[1])
-            base_url = base_url.split(":")[0]
+    full_url = url.split("/")
+    base_url = full_url[2]
+    if ":" in base_url:
+        service_port = int(base_url.split(":")[1])
+        base_url = base_url.split(":")[0]
 
-        logging.info("Splitting Url ")
-        for piece in full_url:
-            part_nr += 1
-            if(part_nr > 3):
-                part_url += "/" + piece
-        logging.info((base_url + " " + str(service_port)))
-        timestart = datetime.datetime.now()
+    logging.debug("Splitting Url ")
+    for piece in full_url:
+        part_nr += 1
+        if(part_nr > 3):
+            part_url += "/" + piece
+    logging.info((base_url + " " + str(service_port)))
+    timestart = datetime.datetime.now()
 
-        if ssl_enabled:
-            r = httplib.HTTPSConnection(
-                base_url, service_port, timeout=timeout)
-        else:
-            r = httplib.HTTPConnection(
-                base_url, service_port, timeout=timeout)
+    if ssl_enabled:
+        r = httplib.HTTPSConnection(
+            base_url, service_port, timeout=timeout)
+    else:
+        r = httplib.HTTPConnection(
+            base_url, service_port, timeout=timeout)
 
-        try:
-            r.request("GET", part_url)
-        except HTTPError as e:
-            web_error = "HTTP Issue: " + str(e)
-            ecode = e.errno
-        except URLError as e:
-            web_error = "L4 Issue : " + str(e)
-            ecode = e.errno
-        except SocketError as e:
-            web_error = "Socket Issue: " + str(e)
-            ecode = e.errno
+    try:
+        r.request("GET", part_url)
+    except HTTPError as e:
+        web_error = "HTTP Issue: " + str(e)
+        ecode = e.errno
+    except URLError as e:
+        web_error = "L4 Issue : " + str(e)
+        ecode = e.errno
+    except SocketError as e:
+        web_error = "Socket Issue: " + str(e)
+        ecode = e.errno
 
-        timestop = datetime.datetime.now()
-        if not web_error:
-            response = r.getresponse()
-            if(response.status == 200 or response.status == 201):
-                logging.debug("Got into OK status with 200 code")
-                delta = int((timestop - timestart).total_seconds() * 1000)
-                ert = delta
-                status = "ok"
-                sline = str(response.status) + " " + response.reason + ", " + str(delta) + "ms"
-                logging.info(sline)
-                ecode = response.status
-                logging.debug("Got out of OK status with 200 code")
-            elif(response.status == 301 or response.status == 302):
-                logging.debug("Got into REDIRECT status ")
-                headers = dict(response.getheaders())
-                if headers.has_key('location'):
-                    if headers['location'].startswith("/"):
-                        if(ssl_enabled):
-                            url = "https://" + base_url +":"+ str(service_port) + headers['location']
-                            logging.debug("New Redirect URL: " + url)
-                        else:
-                            url = "http://" + base_url + ":" + str(service_port) + headers['location']
-                            logging.debug("New Redirect URL: " + url)
-                    else:
-                        url = headers['location']
-                    depth+=1
-                status, sline, ert, ecode = httpCheck(url, timeout, depth)
-                logging.debug("Got out of REDIRECT status ")
-                logging.debug(status + " " + sline + " " + str(ert) +" " + str(ecode))
-            else:
-                logging.debug("Got into fallback")
-                status = "error"
-                delta = int((timestop - timestart).total_seconds() * 1000)
-                web_error = "L7 error - " + \
-                    str(response.status) + " " + \
-                    response.reason + " " + str(delta) + "ms"
-                sline = web_error
-                ert = delta
-                logging.debug("LAST ELSE " + sline)
-                ecode = response.status
-        else:
+    timestop = datetime.datetime.now()
+    if not web_error:
+        response = r.getresponse()
+        if(response.status == 200 or response.status == 201):
+            logging.debug("Got into OK status with 200 code")
             delta = int((timestop - timestart).total_seconds() * 1000)
             ert = delta
+            status = "ok"
+            sline = str(response.status) + " " + response.reason + ", " + str(delta) + "ms"
+            logging.info(sline)
+            ecode = response.status
+            logging.debug("Got out of OK status with 200 code")
+        elif(response.status == 301 or response.status == 302):
+            logging.debug("Got into REDIRECT status ")
+            headers = dict(response.getheaders())
+            if headers.has_key('location'):
+                if headers['location'].startswith("/"):
+                    if(ssl_enabled):
+                        url = "https://" + base_url +":"+ str(service_port) + headers['location']
+                        logging.debug("New Redirect URL: " + url)
+                    else:
+                        url = "http://" + base_url + ":" + str(service_port) + headers['location']
+                        logging.debug("New Redirect URL: " + url)
+                else:
+                    url = headers['location']
+                depth+=1
+            status, sline, ert, ecode = httpCheck(url, timeout, depth)
+            logging.debug("Got out of REDIRECT status ")
+            logging.debug(status + " " + sline + " " + str(ert) +" " + str(ecode))
+        else:
+            logging.debug("Got into fallback")
             status = "error"
+            delta = int((timestop - timestart).total_seconds() * 1000)
+            web_error = "L7 error - " + \
+                str(response.status) + " " + \
+                response.reason + " " + str(delta) + "ms"
             sline = web_error
-            logging.info(web_error)
-        return status, sline, ert, ecode
-
+            ert = delta
+            logging.debug("LAST ELSE " + sline)
+            ecode = response.status
+    else:
+        delta = int((timestop - timestart).total_seconds() * 1000)
+        ert = delta
+        status = "error"
+        sline = web_error
+        logging.info(web_error)
+    return status, sline, ert, ecode
 class _sensor:
     def __init__(self, raw_json):
+        logging.debug("Composing object sensor")
         tmp_obj = json.loads(raw_json)
         self._sensor_id = tmp_obj['service_id']
         self._sensor_type = tmp_obj['service_type']
@@ -277,15 +273,8 @@ class _sensor:
             self._sensor_bllist = []
             self._sensor_blnr = 0
 
-
-    def getID(self):
-        return self._sensor_id
-
     def getStatus(self):
         return self._sensor_status,
-
-    def enableDebug(self):
-        self._debug = True
 
     def serviceCheck(self):
         if self._sensor_type == "http":
@@ -339,7 +328,6 @@ class _sensor:
             logging.info("BL Nr: " + str(self._sensor_blnr))
             logging.info("RBL List: " + str(self._sensor_bllist))
 
-
 def signal_handler(signal, frame):
         logging.info('Ctrl+C!')
         sys.exit(0)
@@ -349,7 +337,7 @@ def message_process(msg):
   worker = _sensor(msg)
   worker.serviceCheck()
   worker.printConfig()
-#   worker.postBack()
+  worker.postBack()
   logging.info("Processing finished")
   return
 
